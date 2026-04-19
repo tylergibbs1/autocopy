@@ -35,6 +35,24 @@ jobs:
           ditto -c -k --keepParent AutoCopy.app "$ZIP"
           shasum -a 256 "$ZIP" > "$ZIP.sha256"
 
+      - name: Write release notes
+        id: notes
+        run: |
+          cat > RELEASE_NOTES.md <<'EOF'
+          ## Install
+
+          1. Download `AutoCopy-<version>.zip` below and unzip it.
+          2. Drag `AutoCopy.app` to `/Applications`.
+          3. First launch: **right-click → Open** (macOS blocks unsigned apps on double-click).
+             Alternative — remove the quarantine flag:
+             ```bash
+             xattr -dr com.apple.quarantine /Applications/AutoCopy.app
+             ```
+          4. Grant Accessibility permission when prompted (System Settings → Privacy & Security → Accessibility).
+
+          This build is ad-hoc signed (no Apple Developer ID). Source: `autocopy.swift` in this repo — build it yourself with `./Scripts/package_app.sh` if you'd rather not trust the zip.
+          EOF
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -44,6 +62,6 @@ jobs:
           ZIP="AutoCopy-${VERSION}.zip"
           gh release create "$TAG" \
             --title "AutoCopy $VERSION" \
-            --generate-notes \
+            --notes-file RELEASE_NOTES.md \
             "$ZIP" "$ZIP.sha256" || \
           gh release upload "$TAG" "$ZIP" "$ZIP.sha256" --clobber
