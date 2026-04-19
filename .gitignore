@@ -1,0 +1,4 @@
+AutoCopy.app/
+*.dSYM/
+.DS_Store
+.build/
