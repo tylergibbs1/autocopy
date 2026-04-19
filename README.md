@@ -1,5 +1,7 @@
 # AutoCopy
 
+<img src="Icon.iconset/icon_256x256.png" alt="AutoCopy logo" width="128" align="right" />
+
 Tiny macOS menu bar app that copies any highlighted text to your clipboard — no ⌘C needed.
 
 ## Install
