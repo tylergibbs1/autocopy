@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v0.1.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build AutoCopy.app
+        run: ./Scripts/package_app.sh release
+
+      - name: Zip bundle
+        run: |
+          ZIP="AutoCopy-${{ steps.tag.outputs.version }}.zip"
+          ditto -c -k --keepParent AutoCopy.app "$ZIP"
+          shasum -a 256 "$ZIP" > "$ZIP.sha256"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          VERSION="${{ steps.tag.outputs.version }}"
+          ZIP="AutoCopy-${VERSION}.zip"
+          gh release create "$TAG" \
+            --title "AutoCopy $VERSION" \
+            --generate-notes \
+            "$ZIP" "$ZIP.sha256" || \
+          gh release upload "$TAG" "$ZIP" "$ZIP.sha256" --clobber
