@@ -19,9 +19,7 @@ enum Accessibility {
 // MARK: - Selection reader
 
 enum SelectionReader {
-    static func current() -> String? {
-        let system = AXUIElementCreateSystemWide()
-
+    static func current(system: AXUIElement) -> String? {
         var focused: AnyObject?
         guard
             AXUIElementCopyAttributeValue(
@@ -50,9 +48,11 @@ enum SelectionReader {
 
 @MainActor
 final class Copier {
-    private let interval: TimeInterval = 0.25
-    private var timer: Timer?
+    private let system: AXUIElement = AXUIElementCreateSystemWide()
+    private let dragThrottle: TimeInterval = 0.1
+    private var monitor: Any?
     private var lastCopied = ""
+    private var lastDragRead: TimeInterval = 0
 
     var onCopy: ((String) -> Void)?
 
@@ -61,20 +61,32 @@ final class Copier {
     func start() {
         guard !self.isRunning else { return }
         self.isRunning = true
-        self.timer = Timer.scheduledTimer(withTimeInterval: self.interval, repeats: true) {
-            [weak self] _ in
-            MainActor.assumeIsolated { self?.tick() }
+        let mask: NSEvent.EventTypeMask = [.leftMouseUp, .leftMouseDragged]
+        self.monitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] event in
+            MainActor.assumeIsolated { self?.handle(event) }
         }
     }
 
     func stop() {
-        self.timer?.invalidate()
-        self.timer = nil
+        if let monitor = self.monitor {
+            NSEvent.removeMonitor(monitor)
+            self.monitor = nil
+        }
         self.isRunning = false
     }
 
-    private func tick() {
-        guard let text = SelectionReader.current(), text != self.lastCopied else { return }
+    private func handle(_ event: NSEvent) {
+        if event.type == .leftMouseDragged {
+            let now = ProcessInfo.processInfo.systemUptime
+            guard now - self.lastDragRead >= self.dragThrottle else { return }
+            self.lastDragRead = now
+        }
+        self.readAndCopy()
+    }
+
+    private func readAndCopy() {
+        guard let text = SelectionReader.current(system: self.system),
+              text != self.lastCopied else { return }
         let pb = NSPasteboard.general
         pb.clearContents()
         pb.setString(text, forType: .string)
