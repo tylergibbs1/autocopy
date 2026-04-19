@@ -79,6 +79,7 @@ final class Copier {
         pb.clearContents()
         pb.setString(text, forType: .string)
         self.lastCopied = text
+        NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
         self.onCopy?(text)
     }
 }
