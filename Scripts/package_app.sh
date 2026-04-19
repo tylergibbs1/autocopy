@@ -41,12 +41,17 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleVersion</key><string>${BUILD_NUMBER}</string>
     <key>LSMinimumSystemVersion</key><string>13.0</string>
     <key>LSUIElement</key><true/>
+    <key>CFBundleIconFile</key><string>Icon</string>
     <key>NSHumanReadableCopyright</key><string>MIT License.</string>
     <key>AutoCopyBuildTimestamp</key><string>${BUILD_TIMESTAMP}</string>
     <key>AutoCopyGitCommit</key><string>${GIT_COMMIT}</string>
 </dict>
 </plist>
 PLIST
+
+if [[ -f "$ROOT/Icon.icns" ]]; then
+  cp "$ROOT/Icon.icns" "$APP/Contents/Resources/Icon.icns"
+fi
 
 xattr -cr "$APP"
 find "$APP" -name '._*' -delete
